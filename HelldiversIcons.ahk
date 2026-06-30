@@ -80,6 +80,52 @@ GetListRowHeight() {
     return Max(listFontSize + 20, ICON_SIZE + 14)
 }
 
+GetListViewClientWidth(hwnd) {
+    rect := Buffer(16, 0)
+    DllCall("GetClientRect", "Ptr", hwnd, "Ptr", rect)
+    w := NumGet(rect, 8, "Int") - NumGet(rect, 0, "Int")
+    h := NumGet(rect, 12, "Int") - NumGet(rect, 4, "Int")
+    count := DllCall("SendMessage", "Ptr", hwnd, "UInt", 0x1004, "Ptr", 0, "Ptr", 0, "Ptr")
+    rowH := DllCall("SendMessage", "Ptr", hwnd, "UInt", 0x1028, "Ptr", 0, "Ptr", 0, "Ptr")
+    if (count > 0 && rowH > 0 && count * rowH > h)
+        w -= DllCall("GetSystemMetrics", "Int", 2)
+    return Max(200, w)
+}
+
+DisableListViewHScroll(lv) {
+    hwnd := lv.Hwnd
+    style := DllCall("GetWindowLongPtr", "Ptr", hwnd, "Int", -16, "Ptr")
+    if (style & 0x100000) {
+        DllCall("SetWindowLongPtr", "Ptr", hwnd, "Int", -16, "Ptr", style & ~0x100000, "Ptr")
+        DllCall("SetWindowPos", "Ptr", hwnd, "Ptr", 0, "Ptr", 0, "Ptr", 0, "Int", 0, "Int", 0, "UInt", 0x27)
+    }
+    DllCall("ShowScrollBar", "Ptr", hwnd, "UInt", 0, "Int", 0)
+}
+
+FitListViewColumns(lv) {
+    global ICON_SIZE, LIST_ICON_INDENT
+    clientW := GetListViewClientWidth(lv.Hwnd)
+    keyW := 72
+    gutter := 4 + LIST_ICON_INDENT
+    usable := clientW - gutter
+    minName := ICON_SIZE + LIST_ICON_INDENT + 36
+    codeW := Max(100, Min(165, Floor(usable * 0.21)))
+    nameW := usable - keyW - codeW
+    if (nameW < minName) {
+        nameW := minName
+        codeW := usable - keyW - nameW
+    }
+    if (codeW < 96) {
+        codeW := 96
+        nameW := Max(minName, usable - keyW - codeW)
+    }
+    lv.ModifyCol(1, nameW)
+    lv.ModifyCol(2, 0)
+    lv.ModifyCol(3, keyW)
+    lv.ModifyCol(4, usable - nameW - keyW)
+    DisableListViewHScroll(lv)
+}
+
 ApplyListViewTheme(lv, theme := "") {
     global LIST_ICON_INDENT, listFontSize
     if (theme = "")
@@ -101,6 +147,7 @@ ApplyListViewTheme(lv, theme := "") {
     ; LVS_EX_DOUBLEBUFFER | LVS_EX_FULLROWSELECT
     styles := 0x00010000 | 0x00000020
     DllCall("SendMessage", "Ptr", hwnd, "UInt", 0x1036, "Ptr", styles, "Ptr", styles)
+    FitListViewColumns(lv)
 }
 
 GetStratIconIndex(strat) {

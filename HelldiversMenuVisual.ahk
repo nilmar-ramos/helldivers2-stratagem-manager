@@ -62,8 +62,10 @@ ApplyListFonts() {
     global MyGui, BindGui, listFontSize
 
     if IsSet(MyGui) && MyGui {
-        if lv := MyGui["StratList"]
+        if lv := MyGui["StratList"] {
             ApplyListViewFont(lv)
+            FitListViewColumns(lv)
+        }
         if lbl := MyGui["FontSizeLabel"]
             lbl.Text := listFontSize
     }
@@ -415,32 +417,37 @@ ShowMainGui() {
     RefreshStratagemList()
 }
 
-LayoutSearchRow(gui, width) {
-    global UI_TOP_BODY, listFontSize
+LayoutToolbarRight(gui, width) {
+    y := 58
+    langW := 56
+    plusW := 28
+    sizeW := 32
+    minusW := 28
+    gap := 6
+    right := width - 16
+    if (c := gui["LangBtn"])
+        c.Move(right - langW, y, langW, 32)
+    if (c := gui["FontPlus"])
+        c.Move(right - langW - gap - plusW, y - 1, plusW, 30)
+    if (c := gui["FontSizeLabel"])
+        c.Move(right - langW - gap - plusW - gap - sizeW, y + 4, sizeW, 24)
+    if (c := gui["FontMinus"])
+        c.Move(right - langW - gap - plusW - gap - sizeW - gap - minusW, y - 1, minusW, 30)
+}
 
+LayoutSearchRow(gui, width) {
+    global UI_TOP_BODY
     listX := ListContentX()
     listW := ListContentWidth(width)
     searchY := UI_TOP_BODY
-    fontPanelW := 132
-    fontPanelX := width - fontPanelW - 16
-    editW := Max(160, fontPanelX - listX - 140)
+    editW := Max(120, listW - 54 - 8 - 72)
 
     if (c := gui["SearchEdit"])
         c.Move(listX + 54, searchY, editW)
     if (c := gui["SearchClear"])
         c.Move(listX + 54 + editW + 8, searchY - 1)
     if (c := gui["SearchHint"])
-        c.Move(listX, searchY + 34, listW - 8)
-    if (c := gui["FontPanel"])
-        c.Move(fontPanelX, searchY - 2, fontPanelW, 32)
-    if (c := gui["FontLabel"])
-        c.Move(fontPanelX + 8, searchY + 4)
-    if (c := gui["FontMinus"])
-        c.Move(fontPanelX + 52, searchY - 1)
-    if (c := gui["FontSizeLabel"])
-        c.Move(fontPanelX + 82, searchY + 4)
-    if (c := gui["FontPlus"])
-        c.Move(fontPanelX + 102, searchY - 1)
+        c.Move(listX, searchY + 34, listW)
 }
 OnMainGuiResize(gui, minMax, width, height, *) {
     global UI_SIDEBAR_W, UI_TOP_BODY
@@ -457,13 +464,14 @@ OnMainGuiResize(gui, minMax, width, height, *) {
     if (gui["CatList"])
         gui["CatList"].Move(20, UI_TOP_BODY + 24, UI_SIDEBAR_W - 8, bodyH - 28)
 
+    LayoutToolbarRight(gui, width)
     LayoutSearchRow(gui, width)
 
     listY := UI_TOP_BODY + 52
     listH := bodyH - 56
     if lv := gui["StratList"] {
         lv.Move(listX, listY, listW, listH)
-        lv.ModifyCol(1, listW - 120 - 240)
+        FitListViewColumns(lv)
     }
     if panel := gui["ListPanel"]
         panel.Move(listX - 4, listY - 4, listW + 8, listH + 8)
@@ -474,7 +482,7 @@ OnMainGuiResize(gui, minMax, width, height, *) {
 }
 
 CreateToolbar(theme) {
-    global MyGui, bindingsPaused
+    global MyGui, bindingsPaused, listFontSize
 
     y := 58
     MyGui.AddButton("x16 y" y " w130 h32", T("btn_bindings"))
@@ -490,7 +498,13 @@ CreateToolbar(theme) {
         .OnEvent("Click", (*) => ClearAllBindings())
     MyGui.AddButton("x596 y" y " w100 h32", T("btn_reload"))
         .OnEvent("Click", (*) => ReloadAll())
-    MyGui.AddButton("x702 y" y " w56 h32 vLangBtn", T("btn_lang"))
+    MyGui.AddButton("x900 y" y " w28 h30 vFontMinus", "−")
+        .OnEvent("Click", (*) => AdjustListFont(-1))
+    MyGui.AddText("x932 y" (y + 4) " w32 h24 Center vFontSizeLabel", listFontSize)
+        .SetFont("s9 c" Format("0x{:06X}", theme["text"]), "Segoe UI")
+    MyGui.AddButton("x968 y" y " w28 h30 vFontPlus", "+")
+        .OnEvent("Click", (*) => AdjustListFont(1))
+    MyGui.AddButton("x1000 y" y " w56 h32 vLangBtn", T("btn_lang"))
         .OnEvent("Click", (*) => ToggleLanguage())
 }
 
@@ -534,31 +548,20 @@ OnCategorySidebarChange(ctrl, *) {
 }
 
 CreateSearchBox(theme) {
-    global MyGui, searchText, listFontSize, UI_TOP_BODY
+    global MyGui, searchText, UI_TOP_BODY
 
     x := ListContentX()
     y := UI_TOP_BODY
 
     MyGui.AddText("x" x " y" (y + 2) " w50 h24", T("label_search"))
         .SetFont("s9 c" Format("0x{:06X}", theme["muted"]), "Segoe UI")
-    searchEdit := MyGui.AddEdit("x" (x + 54) " y" y " w280 h28 vSearchEdit", searchText)
+    searchEdit := MyGui.AddEdit("x" (x + 54) " y" y " w400 h28 vSearchEdit", searchText)
     searchEdit.BackColor := theme["input"]
     searchEdit.OnEvent("Change", OnSearchChange)
-    MyGui.AddButton("x" (x + 342) " y" (y - 1) " w72 h30 vSearchClear", T("btn_clear_search"))
+    MyGui.AddButton("x" (x + 462) " y" (y - 1) " w72 h30 vSearchClear", T("btn_clear_search"))
         .OnEvent("Click", (*) => OnClearSearch())
     MyGui.AddText("x" x " y" (y + 34) " w600 h18 vSearchHint", T("hint_list"))
         .SetFont("s8 c" Format("0x{:06X}", theme["muted"]), "Segoe UI")
-
-    fontPanel := MyGui.AddText("x820 y" (y - 2) " w132 h32 vFontPanel Border", "")
-    fontPanel.BackColor := theme["footer"]
-    MyGui.AddText("x828 y" (y + 4) " w40 h24 vFontLabel", T("label_font"))
-        .SetFont("s9 c" Format("0x{:06X}", theme["muted"]), "Segoe UI")
-    MyGui.AddButton("x872 y" (y - 1) " w28 h30 vFontMinus", "−")
-        .OnEvent("Click", (*) => AdjustListFont(-1))
-    MyGui.AddText("x902 y" (y + 4) " w24 h24 Center vFontSizeLabel", listFontSize)
-        .SetFont("s9 c" Format("0x{:06X}", theme["text"]), "Segoe UI")
-    MyGui.AddButton("x922 y" (y - 1) " w28 h30 vFontPlus", "+")
-        .OnEvent("Click", (*) => AdjustListFont(1))
 }
 
 CreateStratagemList(theme) {
@@ -572,11 +575,8 @@ CreateStratagemList(theme) {
     panel := MyGui.AddText("x" (x - 4) " y" (y - 4) " w" (w + 8) " h" (h + 8) " vListPanel Border", "")
     panel.BackColor := theme["panel"]
 
-    lv := MyGui.AddListView("x" x " y" y " w" w " h" h " vStratList +Grid", [T("col_strat"), "", T("col_key"), T("col_code")])
-    lv.ModifyCol(1, 480)
+    lv := MyGui.AddListView("x" x " y" y " w" w " h" h " vStratList -HScroll", [T("col_strat"), "", T("col_key"), T("col_code")])
     lv.ModifyCol(2, 0)
-    lv.ModifyCol(3, 110)
-    lv.ModifyCol(4, 240)
     lv.OnEvent("DoubleClick", (*) => OnStratagemDoubleClick())
     lv.OnEvent("ContextMenu", OnStratagemContextMenu)
     AttachStratIcons(lv)
@@ -675,6 +675,7 @@ RefreshStratagemList() {
     }
 
     UpdateStatusBar()
+    FitListViewColumns(lv)
 }
 
 UpdateStatusBar() {
@@ -797,11 +798,8 @@ ShowBindingsWindow(*) {
     BindGui.AddText("x16 y36 w500 h18", bindings.Count T("binds_subtitle"))
         .SetFont("s9 c" Format("0x{:06X}", theme["muted"]), "Segoe UI")
 
-    lv := BindGui.AddListView("x16 y64 w760 h400 vBindList", [T("col_strat"), "", T("col_key"), T("col_code")])
-    lv.ModifyCol(1, 320)
+    lv := BindGui.AddListView("x16 y64 w760 h400 vBindList -HScroll", [T("col_strat"), "", T("col_key"), T("col_code")])
     lv.ModifyCol(2, 0)
-    lv.ModifyCol(3, 100)
-    lv.ModifyCol(4, 280)
     lv.OnEvent("ContextMenu", OnBindListContextMenu)
     lv.OnEvent("DoubleClick", OnBindListDoubleClick)
     AttachStratIcons(lv)
@@ -827,7 +825,7 @@ OnBindGuiResize(gui, minMax, width, height, *) {
         return
     if lv := gui["BindList"] {
         lv.Move(16, 64, width - 32, height - 128)
-        lv.ModifyCol(1, width - 32 - 110 - 220)
+        FitListViewColumns(lv)
     }
     if btn := gui["PauseBtn"]
         btn.Move(16, height - 52)

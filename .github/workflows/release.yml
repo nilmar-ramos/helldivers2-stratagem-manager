@@ -15,15 +15,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install AutoHotkey v2
-        run: winget install --id AutoHotkey.AutoHotkey --accept-source-agreements --accept-package-agreements
-
-      - name: Refresh PATH
+      - name: Install AutoHotkey v2 and Ahk2Exe
         shell: pwsh
         run: |
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + `
-            [System.Environment]::GetEnvironmentVariable("Path","User")
-          echo "PATH=$env:Path" >> $env:GITHUB_ENV
+          $setup = Join-Path $env:RUNNER_TEMP "AutoHotkey_setup.exe"
+          Invoke-WebRequest -Uri "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.26/AutoHotkey_2.0.26_setup.exe" -OutFile $setup
+          Start-Process $setup -ArgumentList "/silent" -Wait
+
+          $ahkRoot = Join-Path $env:ProgramFiles "AutoHotkey"
+          $base = Join-Path $ahkRoot "v2\AutoHotkey64.exe"
+          if (-not (Test-Path $base)) {
+            throw "AutoHotkey64.exe not found at $base"
+          }
+
+          $compilerDir = Join-Path $ahkRoot "Compiler"
+          New-Item -ItemType Directory -Force -Path $compilerDir | Out-Null
+          $zip = Join-Path $env:RUNNER_TEMP "Ahk2Exe.zip"
+          Invoke-WebRequest -Uri "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath $compilerDir -Force
+
+          $ahk2exe = Join-Path $compilerDir "Ahk2Exe.exe"
+          if (-not (Test-Path $ahk2exe)) {
+            throw "Ahk2Exe.exe not found at $ahk2exe"
+          }
+          Write-Host "AutoHotkey: $base"
+          Write-Host "Ahk2Exe:    $ahk2exe"
 
       - name: Build distributable
         shell: pwsh

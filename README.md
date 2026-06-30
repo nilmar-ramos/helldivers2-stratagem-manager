@@ -128,16 +128,6 @@ Output in `dist/`:
 - `LEIA-ME.txt`
 - `Helldivers2-Stratagems.zip` (project root; also attached to [GitHub Releases](https://github.com/nilmar-ramos/helldivers2-stratagem-manager/releases))
 
-### Publish a new release (maintainers)
-
-```powershell
-.\build.ps1
-git tag v1.0.1
-git push origin v1.0.1
-```
-
-Pushing a `v*` tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds on Windows and uploads `Helldivers2-Stratagems.zip` to GitHub Releases.
-
 ## Project structure
 
 ```

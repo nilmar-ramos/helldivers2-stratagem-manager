@@ -1,1 +1,0 @@
-MsgBox("Processo ativo: " WinGetProcessName("A"))

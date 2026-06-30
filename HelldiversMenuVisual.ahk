@@ -318,18 +318,7 @@ ExecuteStratagem(stratagem) {
     if STRATAGEM_DATA.Has(stratagem) {
         SendStratagemCode(STRATAGEM_DATA[stratagem]["Code"], delay)
     } else {
-        macrosExe := A_ScriptDir "\Helldivers2-Macros.exe"
-        macrosAhk := A_ScriptDir "\Helldivers 2 Macros.ahk"
-        try {
-            if FileExist(macrosExe)
-                Run('"' macrosExe '" "' stratagem '"')
-            else if FileExist(macrosAhk) && !A_IsCompiled
-                Run('"' A_AhkPath '" "' macrosAhk '" "' stratagem '"')
-            else
-                ShowTrayTip(T("error"), T("strat_unknown") stratagem, 2000)
-        } catch {
-            ShowTrayTip(T("error"), T("strat_exec_error"), 1500)
-        }
+        ShowTrayTip(T("error"), T("strat_unknown") stratagem, 2000)
     }
 }
 

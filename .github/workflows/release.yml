@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install AutoHotkey v2
+        run: winget install --id AutoHotkey.AutoHotkey --accept-source-agreements --accept-package-agreements
+
+      - name: Refresh PATH
+        shell: pwsh
+        run: |
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + `
+            [System.Environment]::GetEnvironmentVariable("Path","User")
+          echo "PATH=$env:Path" >> $env:GITHUB_ENV
+
+      - name: Build distributable
+        shell: pwsh
+        run: ./build.ps1
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Helldivers2-Stratagems.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false

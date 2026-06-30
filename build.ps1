@@ -88,7 +88,11 @@ $iconsSrc = Join-Path $root "icons"
 $iconsDst = Join-Path $dist "icons"
 if (Test-Path $iconsSrc) {
     if (Test-Path $iconsDst) { Remove-Item $iconsDst -Recurse -Force }
-    Copy-Item $iconsSrc $iconsDst -Recurse -Force
+    New-Item -ItemType Directory -Force -Path $iconsDst | Out-Null
+    Get-ChildItem $iconsSrc -File | Copy-Item -Destination $iconsDst -Force
+    Get-ChildItem $iconsSrc -Directory | Where-Object { $_.Name -ne "flat" } | ForEach-Object {
+        Copy-Item $_.FullName $iconsDst -Recurse -Force
+    }
 }
 
 $readme = @"

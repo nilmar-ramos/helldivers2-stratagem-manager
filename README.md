@@ -73,7 +73,7 @@ After this, your numpad hotkeys from this app will match what the game expects.
 
 ### Option A — Executable (recommended)
 
-1. Download `Helldivers2-Stratagems.zip` from [Releases](https://github.com/nilmar-ramos/helldivers2-stratagem-manager/releases) *(when published)* or build locally (see below).
+1. Download **`Helldivers2-Stratagems.zip`** from [Releases](https://github.com/nilmar-ramos/helldivers2-stratagem-manager/releases/latest) or build locally (see below).
 2. Extract the full folder (`Helldivers2-Stratagems.exe` + `icons/`).
 3. Run the `.exe`. On first launch, `config.ini`, `bindings.ini`, and `stratagems.ini` are created automatically.
 
@@ -126,7 +126,17 @@ Output in `dist/`:
 - `Helldivers2-Stratagems.exe`
 - `icons/`
 - `LEIA-ME.txt`
-- `Helldivers2-Stratagems.zip` (project root)
+- `Helldivers2-Stratagems.zip` (project root; also attached to [GitHub Releases](https://github.com/nilmar-ramos/helldivers2-stratagem-manager/releases))
+
+### Publish a new release (maintainers)
+
+```powershell
+.\build.ps1
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+Pushing a `v*` tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds on Windows and uploads `Helldivers2-Stratagems.zip` to GitHub Releases.
 
 ## Project structure
 

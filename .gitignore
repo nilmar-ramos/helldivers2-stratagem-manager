@@ -1,0 +1,10 @@
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Editor / IDE
+.cursor/
+.vscode/
+
+# AutoHotkey
+*.ahk.bak

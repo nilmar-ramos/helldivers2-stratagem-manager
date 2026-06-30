@@ -8,3 +8,10 @@ Desktop.ini
 
 # AutoHotkey
 *.ahk.bak
+
+# Build
+dist/
+*.zip
+
+# Generated icon cache
+icons/flat/

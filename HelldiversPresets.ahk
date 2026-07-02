@@ -265,15 +265,15 @@ ShowPresetMenu(*) {
         return
     }
 
-    menu := Menu()
+    presetMenu := Menu()
     for id in ids {
         meta := ReadPresetMeta(id)
         label := meta.Has("Name") ? meta["Name"] : id
         if (meta.Has("Description") && meta["Description"] != "")
             label .= " — " meta["Description"]
-        menu.Add(label, PresetMenuHandler.Bind(id))
+        presetMenu.Add(label, PresetMenuHandler.Bind(id))
     }
-    menu.Show()
+    presetMenu.Show()
 }
 
 PresetMenuHandler(presetId, *) {

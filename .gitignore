@@ -13,6 +13,11 @@ Desktop.ini
 dist/
 *.zip
 
+# Local user config (generated on first run)
+bindings.ini
+config.ini
+stratagems.ini
+
 # Generated icon cache
 icons/flat/
 

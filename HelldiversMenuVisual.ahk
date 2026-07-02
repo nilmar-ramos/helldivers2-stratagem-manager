@@ -597,10 +597,13 @@ CreateCategorySidebar(theme) {
 RefreshPresetList() {
     global MyGui, activePresetId
 
-    if !IsSet(MyGui) || !MyGui || !MyGui.Has("PresetList")
+    if !IsSet(MyGui) || !MyGui
         return
 
-    presetList := MyGui["PresetList"]
+    try presetList := MyGui["PresetList"]
+    catch
+        return
+
     presetList.Delete()
     ids := ListPresetIds()
     selectIdx := 0
@@ -622,10 +625,13 @@ RefreshPresetList() {
 UpdateActiveLoadoutLabel() {
     global MyGui, activePresetId
 
-    if !IsSet(MyGui) || !MyGui || !MyGui.Has("ActiveLoadout")
+    if !IsSet(MyGui) || !MyGui
         return
 
-    lbl := MyGui["ActiveLoadout"]
+    try lbl := MyGui["ActiveLoadout"]
+    catch
+        return
+
     if (activePresetId = "")
         lbl.Text := T("preset_none_active")
     else

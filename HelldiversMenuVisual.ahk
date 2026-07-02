@@ -283,6 +283,7 @@ RegisterHotkey(key, strat) {
 
 KeyIsValid(key) {
     static validKeys := [
+        "^1", "^2", "^3",
         "Numpad0", "Numpad1", "Numpad2", "Numpad3", "Numpad4",
         "Numpad5", "Numpad6", "Numpad7", "Numpad8", "Numpad9",
         "NumpadDot", "NumpadDiv", "NumpadMult", "NumpadAdd", "NumpadSub", "NumpadEnter"
@@ -292,6 +293,12 @@ KeyIsValid(key) {
             return true
     }
     return false
+}
+
+FormatBindKey(key) {
+    if RegExMatch(key, "^\^(.+)$", &m)
+        return "Ctrl+" m[1]
+    return key
 }
 
 WaitForKey() {
@@ -676,7 +683,7 @@ RefreshStratagemList() {
         boundKey := BoundKeyForStrat(strat)
         if (boundKey = "")
             boundKey := "—"
-        lv.Add(StratIconOption(strat), StratName(strat), strat, boundKey, data["CodeDisplay"])
+        lv.Add(StratIconOption(strat), StratName(strat), strat, FormatBindKey(boundKey), data["CodeDisplay"])
     }
 
     UpdateStatusBar()
@@ -812,7 +819,7 @@ ShowBindingsWindow(*) {
 
     for key, strat in bindings {
         codeDisplay := STRATAGEM_DATA.Has(strat) ? STRATAGEM_DATA[strat]["CodeDisplay"] : "N/A"
-        lv.Add(StratIconOption(strat), StratName(strat), strat, key, codeDisplay)
+        lv.Add(StratIconOption(strat), StratName(strat), strat, FormatBindKey(key), codeDisplay)
     }
 
     btnY := 548

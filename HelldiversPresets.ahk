@@ -2,8 +2,9 @@
 
 ; Mission stratagems that do not use loadout slots (always on the wheel).
 global ALWAYS_AVAILABLE_STRATS := ["Reforçar", "Reabastecimento", "Farol SOS"]
-global ALWAYS_AVAILABLE_KEYS := ["Numpad1", "Numpad2", "Numpad3"]
-global LOADOUT_KEY_SLOTS := ["Numpad4", "Numpad5", "Numpad6", "Numpad7"]
+global ALWAYS_AVAILABLE_KEYS := ["^1", "^2", "^3"]
+global LOADOUT_KEY_SLOTS := ["Numpad1", "Numpad2", "Numpad3", "Numpad4"]
+global LEGACY_ALWAYS_AVAILABLE_KEYS := ["Numpad1", "Numpad2", "Numpad3"]
 global DEFAULT_PRESET_ID := "anti-bugs"
 
 GetPresetsDir() {
@@ -170,7 +171,7 @@ ApplyPresetBindings(loadout) {
 }
 
 EnsureAlwaysAvailableBindings() {
-    global bindings, ALWAYS_AVAILABLE_STRATS, ALWAYS_AVAILABLE_KEYS
+    global bindings, ALWAYS_AVAILABLE_STRATS, ALWAYS_AVAILABLE_KEYS, LEGACY_ALWAYS_AVAILABLE_KEYS
 
     changed := false
     Loop ALWAYS_AVAILABLE_STRATS.Length {
@@ -179,12 +180,22 @@ EnsureAlwaysAvailableBindings() {
             break
         strat := ResolveStrat(ALWAYS_AVAILABLE_STRATS[idx])
         key := ALWAYS_AVAILABLE_KEYS[idx]
-        if (BoundKeyForStrat(strat) != "")
+        current := BoundKeyForStrat(strat)
+        if (current = key)
             continue
+
+        legacy := (idx <= LEGACY_ALWAYS_AVAILABLE_KEYS.Length) ? LEGACY_ALWAYS_AVAILABLE_KEYS[idx] : ""
+        if (current != "" && current != legacy)
+            continue
+
+        if (current != "") {
+            bindings.Delete(current)
+            UnregisterHotkey(current)
+        }
         if bindings.Has(key) {
             old := bindings[key]
             UnregisterHotkey(key)
-            IniDelete(bindingsFile, "Keys", old)
+            bindings.Delete(key)
         }
         bindings[key] := strat
         RegisterHotkey(key, strat)

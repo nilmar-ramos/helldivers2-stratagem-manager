@@ -95,6 +95,13 @@ if (Test-Path $iconsSrc) {
     }
 }
 
+$presetsSrc = Join-Path $root "presets"
+$presetsDst = Join-Path $dist "presets"
+if (Test-Path $presetsSrc) {
+    if (Test-Path $presetsDst) { Remove-Item $presetsDst -Recurse -Force }
+    Copy-Item $presetsSrc $presetsDst -Recurse -Force
+}
+
 $readme = @"
 Helldivers 2 — Gerenciador de Estratégias
 =========================================
@@ -126,7 +133,8 @@ if (Test-Path $zip) { Remove-Item $zip -Force }
 $zipItems = @(
     $outExe,
     (Join-Path $dist "LEIA-ME.txt"),
-    $iconsDst
+    $iconsDst,
+    $presetsDst
 ) | Where-Object { $_ -and (Test-Path $_) }
 Compress-Archive -Path $zipItems -DestinationPath $zip -Force
 

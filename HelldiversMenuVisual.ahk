@@ -6,6 +6,7 @@ SetWorkingDir A_ScriptDir
 #Include HelldiversData.ahk
 #Include HelldiversI18n.ahk
 #Include HelldiversIcons.ahk
+#Include HelldiversPresets.ahk
 
 global stratagems := []
 global bindings := Map()
@@ -122,10 +123,7 @@ LoadStratagemsConfig() {
     changed := CanonicalizeStratList()
 
     if (stratagems.Length = 0) {
-        for name in STRATAGEM_DATA {
-            if IsCanonicalStrat(name)
-                stratagems.Push(name)
-        }
+        stratagems := BuildStratListForPreset(DEFAULT_PRESET_ID)
         SaveStratagemsConfig()
         return
     }
@@ -147,6 +145,8 @@ LoadStratagemsConfig() {
     }
     if (changed)
         SaveStratagemsConfig()
+
+    EnsureAlwaysAvailablePinned()
 }
 
 CanonicalizeStratList() {
@@ -217,6 +217,9 @@ LoadBindings() {
     }
     if (migrated)
         SaveAllBindings()
+
+    EnsureAlwaysAvailableBindings()
+    ApplyInitialBindingsIfEmpty()
 }
 
 SaveBinding(strat, key) {
@@ -498,6 +501,8 @@ CreateToolbar(theme) {
         .OnEvent("Click", (*) => ClearAllBindings())
     MyGui.AddButton("x596 y" y " w100 h32", T("btn_reload"))
         .OnEvent("Click", (*) => ReloadAll())
+    MyGui.AddButton("x702 y" y " w100 h32", T("btn_presets"))
+        .OnEvent("Click", ShowPresetMenu)
     MyGui.AddButton("x900 y" y " w28 h30 vFontMinus", "−")
         .OnEvent("Click", (*) => AdjustListFont(-1))
     MyGui.AddText("x932 y" (y + 4) " w32 h24 Center vFontSizeLabel", listFontSize)
@@ -919,14 +924,9 @@ ExportBindings(*) {
 }
 
 CreateDefaultStratagemsFile() {
-    global stratagemsFile
-
-    content := "[Stratagems]`n"
-    for name in STRATAGEM_DATA {
-        if IsCanonicalStrat(name)
-            content .= name "`n"
-    }
-    FileAppend(content, stratagemsFile)
+    global stratagems
+    stratagems := BuildStratListForPreset(DEFAULT_PRESET_ID)
+    SaveStratagemsConfig()
 }
 
 F6:: ShowMainGui()

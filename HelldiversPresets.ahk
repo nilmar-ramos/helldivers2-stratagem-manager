@@ -48,8 +48,8 @@ ReadPresetLoadout(presetId) {
         raw := IniRead(file, "Loadout", A_Index, "")
         if (raw = "")
             continue
-        canon := ResolveStrat(raw)
-        if STRATAGEM_DATA.Has(canon) && IsCanonicalStrat(canon)
+        canon := ResolvePresetStrat(raw)
+        if (canon != "")
             loadout.Push(canon)
     }
     return loadout
@@ -58,6 +58,31 @@ ReadPresetLoadout(presetId) {
 PresetLabel(presetId) {
     meta := ReadPresetMeta(presetId)
     return meta.Has("Name") ? meta["Name"] : presetId
+}
+
+ResolvePresetStrat(name) {
+    name := Trim(name)
+    if (name = "")
+        return ""
+
+    if STRATAGEM_DATA.Has(name) {
+        canon := ResolveStrat(name)
+        if IsCanonicalStrat(canon)
+            return canon
+    }
+
+    canon := ResolveStrat(name)
+    if STRATAGEM_DATA.Has(canon) && IsCanonicalStrat(canon)
+        return canon
+
+    nameLower := StrLower(name)
+    for key, data in STRATAGEM_DATA {
+        if !IsCanonicalStrat(key)
+            continue
+        if data.Has("NameEn") && StrLower(data["NameEn"]) = nameLower
+            return key
+    }
+    return ""
 }
 
 IsAlwaysAvailableStrat(strat) {
@@ -282,6 +307,7 @@ PresetMenuHandler(presetId, *) {
     if (MsgBox(Format(T("preset_confirm"), name), T("btn_presets"), "YesNo Icon?") = "Yes") {
         if ApplyPreset(presetId) {
             RefreshMainGui()
+            RefreshBindingsWindow()
             ShowTrayTip(T("preset_applied"), name, 2000)
         }
     }

@@ -894,6 +894,12 @@ RefreshMainGui() {
     }
 }
 
+RefreshBindingsWindow() {
+    global BindGui
+    if IsSet(BindGui) && BindGui
+        ShowBindingsWindow()
+}
+
 ReloadAll(*) {
     for key in bindings
         UnregisterHotkey(key)

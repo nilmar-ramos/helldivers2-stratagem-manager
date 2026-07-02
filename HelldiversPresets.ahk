@@ -283,12 +283,194 @@ ApplyPreset(presetId) {
     return true
 }
 
-ShowPresetMenu(*) {
-    ids := ListPresetIds()
-    if (ids.Length = 0) {
-        ShowTrayTip(T("warning"), T("preset_none"), 2000)
+GetLoadoutFromBindings() {
+    global bindings, LOADOUT_KEY_SLOTS
+
+    loadout := []
+    for key in LOADOUT_KEY_SLOTS {
+        if bindings.Has(key)
+            loadout.Push(bindings[key])
+    }
+    return loadout
+}
+
+StratPresetName(strat) {
+    if !STRATAGEM_DATA.Has(strat)
+        return strat
+    data := STRATAGEM_DATA[strat]
+    return data.Has("NameEn") ? data["NameEn"] : strat
+}
+
+SlugifyPresetId(name) {
+    slug := StrLower(Trim(name))
+    slug := RegExReplace(slug, "[áàâãä]", "a")
+    slug := RegExReplace(slug, "[éèêë]", "e")
+    slug := RegExReplace(slug, "[íìîï]", "i")
+    slug := RegExReplace(slug, "[óòôõö]", "o")
+    slug := RegExReplace(slug, "[úùûü]", "u")
+    slug := RegExReplace(slug, "[ç]", "c")
+    slug := RegExReplace(slug, "[^\w-]", "-")
+    slug := RegExReplace(slug, "-+", "-")
+    slug := Trim(slug, "-")
+    return slug != "" ? slug : "custom-" A_TickCount
+}
+
+SavePresetFile(presetId, namePt, nameEn, descriptionPt, descriptionEn, loadout) {
+    dir := GetPresetsDir()
+    if !DirExist(dir)
+        DirCreate(dir)
+
+    file := dir "\" presetId ".ini"
+    content := "[Meta]`n"
+        . "Id=" presetId "`n"
+        . "NamePt=" namePt "`n"
+        . "NameEn=" nameEn "`n"
+        . "DescriptionPt=" descriptionPt "`n"
+        . "DescriptionEn=" descriptionEn "`n"
+        . "`n[Loadout]`n"
+
+    Loop loadout.Length
+        content .= A_Index "=" StratPresetName(loadout[A_Index]) "`n"
+
+    try FileDelete(file)
+    FileAppend(content, file, "UTF-8")
+}
+
+GetSortedCanonicalStrats() {
+    choices := []
+    for name in STRATAGEM_DATA {
+        if IsCanonicalStrat(name) && !IsAlwaysAvailableStrat(name)
+            choices.Push(name)
+    }
+    ; simple sort by display name
+    Loop choices.Length - 1 {
+        i := A_Index
+        Loop choices.Length - i {
+            j := A_Index + i - 1
+            if (StratName(choices[j]) > StratName(choices[j + 1])) {
+                temp := choices[j]
+                choices[j] := choices[j + 1]
+                choices[j + 1] := temp
+            }
+        }
+    }
+    return choices
+}
+
+SaveCurrentLoadoutAsPreset(*) {
+    loadout := GetLoadoutFromBindings()
+    if (loadout.Length = 0) {
+        ShowTrayTip(T("warning"), T("preset_save_empty"), 2500)
         return
     }
+
+    ib := InputBox(T("preset_save_prompt"), T("preset_save_title"))
+    if (ib.Result != "OK" || Trim(ib.Value) = "")
+        return
+
+    name := Trim(ib.Value)
+    presetId := SlugifyPresetId(name)
+    if FileExist(GetPresetsDir() "\" presetId ".ini") {
+        if (MsgBox(Format(T("preset_overwrite"), name), T("preset_save_title"), "YesNo Icon?") != "Yes")
+            return
+    }
+
+    descPt := T("preset_custom_desc")
+    SavePresetFile(presetId, name, name, descPt, descPt, loadout)
+    ShowTrayTip(T("preset_saved"), name, 2000)
+}
+
+ShowCreateLoadoutGui(*) {
+    global LoadoutGui, stratChoices, MyGui, theme := GetTheme()
+
+    if IsSet(LoadoutGui) && LoadoutGui
+        try LoadoutGui.Destroy()
+
+    stratChoices := GetSortedCanonicalStrats()
+    labels := []
+    for strat in stratChoices
+        labels.Push(StratName(strat))
+
+    opts := (IsSet(MyGui) && MyGui) ? "+Owner" MyGui.Hwnd : ""
+    LoadoutGui := Gui(opts, T("preset_create_title"))
+    LoadoutGui.MarginX := 16
+    LoadoutGui.MarginY := 12
+    ApplyGuiTheme(LoadoutGui, theme)
+
+    LoadoutGui.AddText("x16 y12 w420 h20", T("preset_create_hint"))
+        .SetFont("s9 c" Format("0x{:06X}", theme["muted"]), "Segoe UI")
+
+    y := 40
+    Loop 4 {
+        slot := A_Index
+        LoadoutGui.AddText("x16 y" y " w80 h24", Format(T("preset_slot"), slot))
+        ddl := LoadoutGui.AddDropDownList("x96 y" (y - 2) " w340 h200 vLoadoutSlot" slot, labels.Clone())
+        ddl.Value := Min(slot, labels.Length)
+        y += 34
+    }
+
+    LoadoutGui.AddText("x16 y" y " w80 h24", T("preset_name_label"))
+    LoadoutGui.AddEdit("x96 y" (y - 2) " w340 h28 vPresetName", T("preset_custom_default_name"))
+    y += 40
+
+    LoadoutGui.AddButton("x96 y" y " w120 h32", T("preset_save_apply"))
+        .OnEvent("Click", SaveCreatedLoadout)
+    LoadoutGui.AddButton("x224 y" y " w100 h32", T("btn_close"))
+        .OnEvent("Click", (*) => LoadoutGui.Destroy())
+
+    LoadoutGui.Show("w460 h" (y + 52))
+}
+
+SaveCreatedLoadout(*) {
+    global LoadoutGui, stratChoices
+
+    loadout := []
+    seen := Map()
+    Loop 4 {
+        slot := A_Index
+        ddl := LoadoutGui["LoadoutSlot" slot]
+        idx := ddl.Value
+        if (idx < 1 || idx > stratChoices.Length)
+            continue
+        strat := stratChoices[idx]
+        if seen.Has(strat) {
+            MsgBox(T("preset_duplicate_slot"), T("error"), "Icon!")
+            return
+        }
+        seen[strat] := true
+        loadout.Push(strat)
+    }
+
+    if (loadout.Length = 0) {
+        MsgBox(T("preset_pick_one"), T("error"), "Icon!")
+        return
+    }
+
+    name := Trim(LoadoutGui["PresetName"].Value)
+    if (name = "") {
+        MsgBox(T("preset_name_required"), T("error"), "Icon!")
+        return
+    }
+
+    presetId := SlugifyPresetId(name)
+    if FileExist(GetPresetsDir() "\" presetId ".ini") {
+        if (MsgBox(Format(T("preset_overwrite"), name), T("preset_save_title"), "YesNo Icon?") != "Yes")
+            return
+    }
+
+    descPt := T("preset_custom_desc")
+    SavePresetFile(presetId, name, name, descPt, descPt, loadout)
+    LoadoutGui.Destroy()
+
+    if ApplyPreset(presetId) {
+        RefreshMainGui()
+        RefreshBindingsWindow()
+        ShowTrayTip(T("preset_applied"), name, 2000)
+    }
+}
+
+ShowPresetMenu(*) {
+    ids := ListPresetIds()
 
     presetMenu := Menu()
     for id in ids {
@@ -298,6 +480,11 @@ ShowPresetMenu(*) {
             label .= " — " meta["Description"]
         presetMenu.Add(label, PresetMenuHandler.Bind(id))
     }
+
+    if (ids.Length > 0)
+        presetMenu.Add()
+    presetMenu.Add(T("preset_save_current"), SaveCurrentLoadoutAsPreset)
+    presetMenu.Add(T("preset_create"), ShowCreateLoadoutGui)
     presetMenu.Show()
 }
 

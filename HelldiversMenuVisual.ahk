@@ -669,8 +669,12 @@ StratMatchesFilter(strat, data) {
 RefreshStratagemList() {
     global MyGui, stratagems, bindings, STRATAGEM_DATA
 
+    if !IsSet(MyGui) || !MyGui
+        return
+
     lv := MyGui["StratList"]
     lv.Delete()
+    AttachStratIcons(lv)
 
     for strat in stratagems {
         if !STRATAGEM_DATA.Has(strat) || !IsCanonicalStrat(strat)

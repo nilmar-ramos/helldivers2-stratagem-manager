@@ -152,7 +152,12 @@ ApplyListViewTheme(lv, theme := "") {
 
 GetStratIconIndex(strat) {
     global stratIconIndex
-    return stratIconIndex.Has(strat) ? stratIconIndex[strat] : 1
+    canon := ResolveStrat(strat)
+    if stratIconIndex.Has(canon)
+        return stratIconIndex[canon]
+    if stratIconIndex.Has(strat)
+        return stratIconIndex[strat]
+    return 1
 }
 
 AttachStratIcons(lv) {

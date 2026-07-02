@@ -336,18 +336,28 @@ SavePresetFile(presetId, namePt, nameEn, descriptionPt, descriptionEn, loadout) 
     FileAppend(content, file, "UTF-8")
 }
 
-StratNameSort(a, b) {
-    return StrCompare(StratName(a), StratName(b))
-}
-
 GetSortedCanonicalStrats() {
     choices := []
     for name in STRATAGEM_DATA {
         if IsCanonicalStrat(name) && !IsAlwaysAvailableStrat(name)
             choices.Push(name)
     }
-    if (choices.Length > 1)
-        Sort(&choices, StratNameSort)
+
+    count := choices.Length
+    if (count <= 1)
+        return choices
+
+    Loop count - 1 {
+        outer := A_Index
+        Loop count - outer {
+            inner := A_Index
+            if (StrCompare(StratName(choices[inner]), StratName(choices[inner + 1])) > 0) {
+                temp := choices[inner]
+                choices[inner] := choices[inner + 1]
+                choices[inner + 1] := temp
+            }
+        }
+    }
     return choices
 }
 

@@ -241,7 +241,7 @@ ApplyInitialBindingsIfEmpty() {
 }
 
 ApplyPreset(presetId) {
-    global stratagems, configFile
+    global stratagems, configFile, activePresetId
 
     loadout := ReadPresetLoadout(presetId)
     if (loadout.Length = 0) {
@@ -279,6 +279,7 @@ ApplyPreset(presetId) {
 
     SaveStratagemsConfig()
     ApplyPresetBindings(loadout)
+    activePresetId := presetId
     IniWrite(presetId, configFile, "General", "ActivePreset")
     return true
 }
@@ -382,6 +383,7 @@ SaveCurrentLoadoutAsPreset(*) {
     descPt := T("preset_custom_desc")
     SavePresetFile(presetId, name, name, descPt, descPt, loadout)
     ShowTrayTip(T("preset_saved"), name, 2000)
+    RefreshPresetList()
 }
 
 ShowCreateLoadoutGui(*) {
@@ -467,39 +469,9 @@ SaveCreatedLoadout(*) {
     LoadoutGui.Destroy()
 
     if ApplyPreset(presetId) {
+        RefreshPresetList()
         RefreshMainGui()
         RefreshBindingsWindow()
         ShowTrayTip(T("preset_applied"), name, 2000)
-    }
-}
-
-ShowPresetMenu(*) {
-    ids := ListPresetIds()
-
-    presetMenu := Menu()
-    for id in ids {
-        meta := ReadPresetMeta(id)
-        label := meta.Has("Name") ? meta["Name"] : id
-        if (meta.Has("Description") && meta["Description"] != "")
-            label .= " — " meta["Description"]
-        presetMenu.Add(label, PresetMenuHandler.Bind(id))
-    }
-
-    if (ids.Length > 0)
-        presetMenu.Add()
-    presetMenu.Add(T("preset_save_current"), SaveCurrentLoadoutAsPreset)
-    presetMenu.Add(T("preset_create"), ShowCreateLoadoutGui)
-    presetMenu.Show()
-}
-
-PresetMenuHandler(presetId, *) {
-    meta := ReadPresetMeta(presetId)
-    name := meta.Has("Name") ? meta["Name"] : presetId
-    if (MsgBox(Format(T("preset_confirm"), name), T("btn_presets"), "YesNo Icon?") = "Yes") {
-        if ApplyPreset(presetId) {
-            RefreshMainGui()
-            RefreshBindingsWindow()
-            ShowTrayTip(T("preset_applied"), name, 2000)
-        }
     }
 }

@@ -23,6 +23,7 @@ global bindingsPaused := false
 global listFontSize := 12
 global UI_SIDEBAR_W := 208
 global UI_TOP_BODY := 108
+global activePresetId := ""
 global CATEGORIES := ["Todas", "Suprimentos", "Missão", "Defensivas", "Ofensivas", "Hangar", "Ponte", "Engenharia", "Oficina"]
 
 GetTheme() {
@@ -43,10 +44,11 @@ ApplyGuiTheme(gui, theme) {
 }
 
 LoadConfig() {
-    global configFile, listFontSize, lang
+    global configFile, listFontSize, lang, activePresetId
     listFontSize := Integer(IniRead(configFile, "General", "ListFontSize", "12"))
     listFontSize := Max(9, Min(16, listFontSize))
     SetLanguage(IniRead(configFile, "General", "Language", "pt"))
+    activePresetId := IniRead(configFile, "General", "ActivePreset", "")
 }
 
 SaveConfig() {
@@ -459,6 +461,40 @@ LayoutSearchRow(gui, width) {
     if (c := gui["SearchHint"])
         c.Move(listX, searchY + 34, listW)
 }
+
+LayoutSidebar(gui, bodyH) {
+    global UI_TOP_BODY, UI_SIDEBAR_W
+
+    sideW := UI_SIDEBAR_W - 8
+    catLabelY := UI_TOP_BODY
+    catListY := catLabelY + 22
+    catH := Max(120, Floor(bodyH * 0.36))
+    sepY := catListY + catH + 8
+    loadoutLabelY := sepY + 10
+    activeY := loadoutLabelY + 22
+    presetListY := activeY + 20
+    btnH := 28
+    btnRowY := UI_TOP_BODY + bodyH - btnH - 8
+    presetListH := Max(72, btnRowY - presetListY - 8)
+    btnW := Floor((sideW - 8) / 2)
+
+    if (c := gui["CatLabel"])
+        c.Move(20, catLabelY, sideW, 20)
+    if (c := gui["CatList"])
+        c.Move(20, catListY, sideW, catH)
+    if (c := gui["SidebarSep"])
+        c.Move(20, sepY, sideW, 2)
+    if (c := gui["LoadoutLabel"])
+        c.Move(20, loadoutLabelY, sideW, 20)
+    if (c := gui["ActiveLoadout"])
+        c.Move(20, activeY, sideW, 18)
+    if (c := gui["PresetList"])
+        c.Move(20, presetListY, sideW, presetListH)
+    if (c := gui["BtnSaveLoadout"])
+        c.Move(20, btnRowY, btnW, btnH)
+    if (c := gui["BtnCreateLoadout"])
+        c.Move(20 + btnW + 8, btnRowY, btnW, btnH)
+}
 OnMainGuiResize(gui, minMax, width, height, *) {
     global UI_SIDEBAR_W, UI_TOP_BODY
 
@@ -471,8 +507,7 @@ OnMainGuiResize(gui, minMax, width, height, *) {
 
     if (gui["SidebarPanel"])
         gui["SidebarPanel"].Move(12, UI_TOP_BODY - 4, UI_SIDEBAR_W + 8, bodyH + 4)
-    if (gui["CatList"])
-        gui["CatList"].Move(20, UI_TOP_BODY + 24, UI_SIDEBAR_W - 8, bodyH - 28)
+    LayoutSidebar(gui, bodyH)
 
     LayoutToolbarRight(gui, width)
     LayoutSearchRow(gui, width)
@@ -508,8 +543,6 @@ CreateToolbar(theme) {
         .OnEvent("Click", (*) => ClearAllBindings())
     MyGui.AddButton("x596 y" y " w100 h32", T("btn_reload"))
         .OnEvent("Click", (*) => ReloadAll())
-    MyGui.AddButton("x702 y" y " w100 h32", T("btn_presets"))
-        .OnEvent("Click", ShowPresetMenu)
     MyGui.AddButton("x900 y" y " w28 h30 vFontMinus", "−")
         .OnEvent("Click", (*) => AdjustListFont(-1))
     MyGui.AddText("x932 y" (y + 4) " w32 h24 Center vFontSizeLabel", listFontSize)
@@ -526,10 +559,10 @@ CreateCategorySidebar(theme) {
     panel := MyGui.AddText("x12 y" (UI_TOP_BODY - 4) " w" (UI_SIDEBAR_W + 8) " h500 vSidebarPanel Border", "")
     panel.BackColor := theme["panel"]
 
-    MyGui.AddText("x20 y" UI_TOP_BODY " w" (UI_SIDEBAR_W - 8) " h20", T("label_category"))
+    MyGui.AddText("x20 y" UI_TOP_BODY " w" (UI_SIDEBAR_W - 8) " h20 vCatLabel", T("label_category"))
         .SetFont("s9 bold c" Format("0x{:06X}", theme["muted"]), "Segoe UI")
 
-    catList := MyGui.AddListBox("x20 y" (UI_TOP_BODY + 24) " w" (UI_SIDEBAR_W - 8) " h460 vCatList", [])
+    catList := MyGui.AddListBox("x20 y" (UI_TOP_BODY + 24) " w" (UI_SIDEBAR_W - 8) " h200 vCatList", [])
     catList.SetFont("s11", "Segoe UI")
     for cat in CATEGORIES
         catList.Add([CategoryLabel(cat)])
@@ -542,6 +575,96 @@ CreateCategorySidebar(theme) {
     }
     catList.Value := idx
     catList.OnEvent("Change", OnCategorySidebarChange)
+
+    sep := MyGui.AddText("x20 y320 w" (UI_SIDEBAR_W - 8) " h1 vSidebarSep", "")
+    sep.BackColor := theme["footer"]
+    MyGui.AddText("x20 y330 w" (UI_SIDEBAR_W - 8) " h20 vLoadoutLabel", T("label_loadout"))
+        .SetFont("s9 bold c" Format("0x{:06X}", theme["muted"]), "Segoe UI")
+    MyGui.AddText("x20 y352 w" (UI_SIDEBAR_W - 8) " h18 vActiveLoadout", "")
+        .SetFont("s9 c" Format("0x{:06X}", theme["accent"]), "Segoe UI")
+
+    presetList := MyGui.AddListBox("x20 y374 w" (UI_SIDEBAR_W - 8) " h140 vPresetList", [])
+    presetList.SetFont("s11", "Segoe UI")
+    presetList.OnEvent("Change", OnPresetSidebarChange)
+    RefreshPresetList()
+
+    MyGui.AddButton("x20 y520 w96 h28 vBtnSaveLoadout", T("preset_save_short"))
+        .OnEvent("Click", SaveCurrentLoadoutAsPreset)
+    MyGui.AddButton("x124 y520 w96 h28 vBtnCreateLoadout", T("preset_create_short"))
+        .OnEvent("Click", ShowCreateLoadoutGui)
+}
+
+RefreshPresetList() {
+    global MyGui, activePresetId
+
+    if !IsSet(MyGui) || !MyGui || !MyGui.Has("PresetList")
+        return
+
+    presetList := MyGui["PresetList"]
+    presetList.Delete()
+    ids := ListPresetIds()
+    selectIdx := 0
+    i := 0
+    for id in ids {
+        i++
+        label := PresetLabel(id)
+        if (id = activePresetId)
+            label := T("preset_active_marker") " " label
+        presetList.Add([label])
+        if (id = activePresetId)
+            selectIdx := i
+    }
+    if (selectIdx > 0)
+        presetList.Value := selectIdx
+    UpdateActiveLoadoutLabel()
+}
+
+UpdateActiveLoadoutLabel() {
+    global MyGui, activePresetId
+
+    if !IsSet(MyGui) || !MyGui || !MyGui.Has("ActiveLoadout")
+        return
+
+    lbl := MyGui["ActiveLoadout"]
+    if (activePresetId = "")
+        lbl.Text := T("preset_none_active")
+    else
+        lbl.Text := Format(T("preset_active_fmt"), PresetLabel(activePresetId))
+}
+
+OnPresetSidebarChange(ctrl, *) {
+    global activePresetId
+
+    ids := ListPresetIds()
+    idx := ctrl.Value
+    if (idx < 1 || idx > ids.Length)
+        return
+
+    presetId := ids[idx]
+    if (presetId = activePresetId)
+        return
+
+    ConfirmApplyPreset(presetId)
+}
+
+ConfirmApplyPreset(presetId) {
+    global activePresetId
+
+    name := PresetLabel(presetId)
+    if (MsgBox(Format(T("preset_confirm"), name), T("label_loadout"), "YesNo Icon?") != "Yes") {
+        RefreshPresetList()
+        return
+    }
+
+    if ApplyPreset(presetId) {
+        activePresetId := presetId
+        RefreshPresetList()
+        RefreshMainGui()
+        RefreshBindingsWindow()
+        ShowTrayTip(T("preset_applied"), name, 2000)
+    } else {
+        RefreshPresetList()
+    }
 }
 
 OnCategorySidebarChange(ctrl, *) {
@@ -908,6 +1031,7 @@ ReloadAll(*) {
     for key in bindings
         UnregisterHotkey(key)
 
+    LoadConfig()
     LoadStratagemsConfig()
     LoadBindings()
     ShowMainGui()
